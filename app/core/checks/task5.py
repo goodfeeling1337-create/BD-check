@@ -35,12 +35,20 @@ def check(
     ref_set = set(ref_pk)
     stu_set = set(stu_pk)
     if ref_set != stu_set:
+        missing = sorted(ref_set - stu_set)
+        extra = sorted(stu_set - ref_set)
+        parts = ["Первичный ключ определён неверно."]
+        if missing:
+            parts.append(f"Отсутствуют атрибуты: {', '.join(missing)}.")
+        if extra:
+            parts.append(f"Лишние атрибуты: {', '.join(extra)}.")
         return TaskResult(
             status="FAIL",
             expected=ref_pk,
             actual=stu_pk,
-            missing=sorted(ref_set - stu_set),
-            extra=sorted(stu_set - ref_set),
+            missing=missing,
+            extra=extra,
+            explanation=" ".join(parts),
         )
     if not is_superkey(stu_pk, U, F_ref):
         return TaskResult(

@@ -4,6 +4,7 @@ from typing import Optional
 from app.core.checks import task2, task3, task4, task5, task6, task8, task11, task13
 from app.core.checks.common import canon_attr_for_compare
 from app.core.excel.importer import ParsedSolution
+from app.core.semantic.query import get_pk_hint
 from app.core.semantic.triples import TripleStore
 
 
@@ -34,7 +35,14 @@ def _add_table_1nf(store: TripleStore, role: str, headers: list[str], rows: list
         store.add(subj, "has_attribute", c)
     store.add(subj, "table_1nf_headers", canon_headers)
     store.add(subj, "table_1nf_rows", rows)
-    pk_hint = [canon_attr_for_compare(h) for h in headers if h and ("*" in str(h).strip() or str(h).strip().endswith("*"))]
+    # PK-hint: столбцы, помеченные * (в начале, в конце или после пробела)
+    pk_hint = []
+    for h in headers:
+        if not h:
+            continue
+        s = str(h).strip()
+        if "*" in s or s.endswith("*") or s.startswith("*"):
+            pk_hint.append(canon_attr_for_compare(h))
     if pk_hint:
         store.add(subj, "pk_hint_contains", pk_hint)
     store.add(subj, "row_count", len(rows))
@@ -112,8 +120,10 @@ def build_graph(
     if F:
         _add_fds(store, role, 4, F)
 
-    # Task 5: PK
+    # Task 5: PK — из блока №5 или из PK-hint таблицы 1НФ (столбцы с *)
     pk_list = task5.extract_pk_ref(solution, dict_ref) if role == "ref" else task5.extract_pk_student(solution, dict_ref)
+    if not pk_list:
+        pk_list = get_pk_hint(store, role, 3)  # эталон/студент: PK по звёздочкам в заголовках
     if pk_list:
         _add_pk(store, role, pk_list)
 

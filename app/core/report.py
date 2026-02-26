@@ -137,8 +137,19 @@ def build_html_report(compare_result: dict) -> str:
         actual_cell = _format_value_html(r.actual) if r.actual is not None else "—"
         parts.append(f"<td class='expected'>{expected_cell}</td><td>{actual_cell}</td></tr></table>")
 
+        # Сначала — чего не хватает / в чём ошибка (явная формулировка)
+        if r.explanation:
+            parts.append(f"<p><b>В чём ошибка:</b> {_escape(r.explanation)}</p>")
+        if r.details and not r.explanation:
+            details_ru = _details_ru(r.details, i)
+            if details_ru:
+                parts.append(f"<p><b>Причина:</b> {_escape(details_ru)}</p>")
+
         if r.missing:
-            parts.append("<p><b>Отсутствует в ответе студента:</b></p>")
+            if i == 11 and isinstance(r.missing, list) and r.missing and isinstance(r.missing[0], str):
+                parts.append("<p><b>Атрибуты без покрытия в схемах студента:</b></p>")
+            else:
+                parts.append("<p><b>Отсутствует в ответе студента:</b></p>")
             if i == 3 and isinstance(r.missing, list) and r.missing and isinstance(r.missing[0], (list, tuple)):
                 parts.append("<table><tr><th>№</th><th>Строка данных</th></tr>")
                 for j, row in enumerate(r.missing[:10]):
@@ -159,12 +170,8 @@ def build_html_report(compare_result: dict) -> str:
                 parts.append("</table>")
             else:
                 parts.append(f"<p class='code'>{_format_value_html(r.extra)}</p>")
-        if r.details and not (r.missing or r.extra):
-            details_ru = _details_ru(r.details, i)
-            if details_ru:
-                parts.append(f"<p><b>Пояснение:</b> {_escape(details_ru)}</p>")
-        if r.explanation:
-            parts.append(f"<p>{_escape(r.explanation)}</p>")
+        if r.details and r.explanation and _details_ru(r.details, i):
+            parts.append(f"<p><b>Детали:</b> {_escape(_details_ru(r.details, i))}</p>")
         parts.append("</div></details>")
 
     parts.append("</body></html>")
@@ -202,6 +209,7 @@ def _details_ru(details: dict, task_num: int) -> str:
                 "not_minimal": "ключ не минимален",
                 "pk_hint_empty_cell": "в ключевом столбце пустая ячейка",
                 "pk_hint_duplicate": "дубликат по ключу",
+                "rows_differ": "состав строк таблицы отличается от эталона",
             }.get(str(v), str(v))
         elif k == "error":
             v_ru = str(v)

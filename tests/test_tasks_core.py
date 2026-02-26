@@ -4,6 +4,7 @@ from app.core.checks.common import (
     canon_attr_for_compare,
     parse_fd_string,
     normalize_fd_arrow,
+    normalize_cell_value,
     is_separator_row,
     build_attribute_dictionary,
     extract_attrs_via_dictionary_simple,
@@ -84,3 +85,14 @@ def test_extract_multiword_attrs():
     found = extract_attrs_via_dictionary_simple("код товара и адрес поставщика", d)
     assert set(found) <= {"код товара", "адрес поставщика"}
     assert len(found) >= 1
+
+
+def test_normalize_cell_value_dates():
+    """Даты приводятся к YYYY-MM-DD для совпадения строк таблицы."""
+    assert normalize_cell_value("2022-03-15 00:00:00") == "2022-03-15"
+    assert normalize_cell_value("15.03.2022") == "2022-03-15"
+    assert normalize_cell_value("15/03/2022") == "2022-03-15"
+    assert normalize_cell_value("plain") == "plain"
+    # Число как дни от 1900-01-01: 44634-й день = 2022-03-15
+    assert normalize_cell_value(44634) == "2022-03-15"
+    assert normalize_cell_value("44634") == "2022-03-15"

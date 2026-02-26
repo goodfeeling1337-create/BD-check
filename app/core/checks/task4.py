@@ -1,4 +1,5 @@
 """Task 4: FDs — извлечение по словарю, сравнение по выводимости, оценка ++/+-/-+/--."""
+import re
 from typing import TYPE_CHECKING
 
 from app.core.checks.common import normalize_fd_arrow, parse_fd_string
@@ -11,22 +12,34 @@ if TYPE_CHECKING:
     from app.core.semantic.triples import TripleStore
 
 
+def _has_arrow(s: str) -> bool:
+    return "->" in s or "→" in s or "–" in s or "—" in s or "=>" in s
+
+
 def _collect_fd_strings(parsed: ParsedSolution, task_num: int) -> list[str]:
     out = []
     t = parsed.tasks.get(task_num)
     if not t:
         return out
+    def add_fd_string(s: str) -> None:
+        s = normalize_fd_arrow(s.strip())
+        if s and "->" in s:
+            out.append(s)
+
     for line in t.text_lines:
-        line = normalize_fd_arrow(line)
-        if "->" in line:
-            out.append(line)
+        for part in re.split(r"[;\n]", line):
+            add_fd_string(part)
     for tbl in t.tables:
         for row in tbl.rows:
             if len(row) >= 2:
-                out.append(normalize_fd_arrow(str(row[0]) + "->" + str(row[1])))
+                add_fd_string(str(row[0]) + "->" + str(row[1]))
+            elif len(row) == 1:
+                cell = str(row[0])
+                for sub in re.split(r"[;\n]", cell):
+                    add_fd_string(sub)
         for h in tbl.headers:
-            if "->" in str(h):
-                out.append(normalize_fd_arrow(str(h)))
+            for sub in re.split(r"[;\n]", str(h)):
+                add_fd_string(sub)
     return out
 
 

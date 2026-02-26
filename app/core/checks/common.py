@@ -1,5 +1,6 @@
 """Канонизация атрибутов и извлечение по словарю (без разбиения по пробелам)."""
 import re
+from datetime import datetime, timedelta
 from typing import Any, Optional, Union
 
 NBSP = "\u00a0"
@@ -135,7 +136,7 @@ def lookup_in_dictionary(dictionary: dict[str, str], candidate: str) -> Optional
 
 # --- Парсинг ФЗ: стрелки, разбиение по ; и переводам строк, LHS/RHS по запятой/точке с запятой (не по пробелам) ---
 
-ARROW_PATTERNS = ["→", "—", "^->", "=>", "--", "->"]
+ARROW_PATTERNS = ["→", "–", "—", "^->", "=>", "--", "->"]  # – en-dash U+2013
 
 
 def normalize_fd_arrow(s: str) -> str:
@@ -205,18 +206,60 @@ def parse_fd_string(
     return result
 
 
+def _excel_serial_to_ymd(serial: float) -> Optional[str]:
+    """Число как дата: дни от 1900-01-01 (serial=1 -> 1900-01-01). Совпадает с интерпретацией многих экспортов."""
+    try:
+        if not (1 <= serial <= 2958465):  # разумный диапазон дат
+            return None
+        epoch = datetime(1900, 1, 1)
+        d = epoch + timedelta(days=int(serial) - 1)
+        return d.strftime("%Y-%m-%d")
+    except (ValueError, OSError):
+        return None
+
+
+def _normalize_date_like(s: str) -> str:
+    """Приводит дату/время к виду YYYY-MM-DD для сравнения строк таблицы."""
+    s = s.strip()
+    # Excel datetime "2022-03-15 00:00:00" -> "2022-03-15"
+    m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)?$", s)
+    if m:
+        y, mo, d = m.group(1), m.group(2).zfill(2), m.group(3).zfill(2)
+        return f"{y}-{mo}-{d}"
+    # "15.03.2022" или "15/03/2022"
+    m = re.match(r"^(\d{1,2})[./](\d{1,2})[./](\d{4})$", s)
+    if m:
+        d, mo, y = m.group(1).zfill(2), m.group(2).zfill(2), m.group(3)
+        return f"{y}-{mo}-{d}"
+    # Excel serial number (например 44927)
+    try:
+        f = float(s)
+        if f == int(f) and f >= 1:
+            ymd = _excel_serial_to_ymd(f)
+            if ymd:
+                return ymd
+    except ValueError:
+        pass
+    return s
+
+
 def normalize_cell_value(val: Any) -> str:
-    """Trim, число 1.0 -> 1 для сравнения."""
+    """Trim, число 1.0 -> 1, даты к YYYY-MM-DD для сравнения."""
     if val is None:
         return ""
     s = str(val).strip()
     try:
         f = float(s)
         if f == int(f):
+            # Может быть Excel-дата (серийный номер)
+            if f >= 1:
+                ymd = _excel_serial_to_ymd(f)
+                if ymd:
+                    return ymd
             return str(int(f))
     except ValueError:
         pass
-    return s
+    return _normalize_date_like(s)
 
 
 def is_separator_row(row: list[Any], max_col: Optional[int] = None) -> bool:

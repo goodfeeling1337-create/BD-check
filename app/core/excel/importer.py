@@ -39,16 +39,9 @@ def _cell_value(ws, row: int, col: int) -> Any:
     return v
 
 
-def _normalize_cell_display(val: Any) -> str:
-    if val is None:
-        return ""
-    s = str(val).strip()
-    if isinstance(val, (int, float)) and float(val) == int(val):
-        return str(int(val))
-    return s
-
-
 def _extract_table(ws, table: TableInBlock) -> ExtractedTable:
+    from app.core.checks.common import normalize_cell_value
+
     headers = []
     for c in range(table.min_col, table.max_col + 1):
         v = _cell_value(ws, table.header_row, c)
@@ -58,7 +51,7 @@ def _extract_table(ws, table: TableInBlock) -> ExtractedTable:
         row = []
         for c in range(table.min_col, table.max_col + 1):
             v = _cell_value(ws, r, c)
-            row.append(_normalize_cell_display(v))
+            row.append(normalize_cell_value(v))
         rows.append(row)
     return ExtractedTable(headers=headers, rows=rows)
 
