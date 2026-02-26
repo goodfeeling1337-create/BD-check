@@ -13,10 +13,11 @@ ANSWER_PREFIX_RE = re.compile(r"^\s*ответ\s*:?\s*", re.IGNORECASE)
 
 @dataclass
 class TableInBlock:
-    """A table: header row index (1-based) and list of data row indices."""
+    """Таблица: строка заголовка, строки данных, диапазон колонок (таблица может быть сдвинута)."""
     header_row: int
     data_rows: list[int]
-    max_col: int  # last column with content in header
+    min_col: int
+    max_col: int
 
 
 def _row_is_separator(ws: "Worksheet", row: int, min_col: int, max_col: int) -> bool:
@@ -94,32 +95,42 @@ def detect_tables_in_block(
             r += 1
             continue
         header_row = r
-        # Count columns used in header
+        min_col = max_col + 1
         cols_used = 0
         for c in range(1, max_col + 1):
-            if ws.cell(row=header_row, column=c).value is not None and str(ws.cell(row=header_row, column=c).value).strip():
+            v = ws.cell(row=header_row, column=c).value
+            if v is not None and str(v).strip():
+                if min_col > c:
+                    min_col = c
                 cols_used = c
-        data_rows: list[int] = []
+        min_col = min(min_col, cols_used) if cols_used else 1
+        cols_used = max(cols_used, 1)
+        data_rows_list: list[int] = []
         r += 1
         while r < end_row:
-            if _row_is_separator(ws, r, 1, max_col):
+            if _row_is_separator(ws, r, min_col, cols_used):
                 r += 1
                 continue
             if _is_instruction_row(ws, r, max_col):
                 r += 1
                 continue
-            # Check if this row has any content in header column range
             has_content = any(
-                ws.cell(row=r, column=c).value is not None and str(ws.cell(row=r, column=c).value).strip()
-                for c in range(1, cols_used + 1)
+                ws.cell(row=r, column=c).value is not None
+                and str(ws.cell(row=r, column=c).value).strip()
+                for c in range(min_col, cols_used + 1)
             )
             if has_content:
-                data_rows.append(r)
+                data_rows_list.append(r)
                 r += 1
             else:
-                # Empty row or new section — might be next table or end
                 break
-        # Добавляем таблицу, даже если строк данных нет (шаблон может быть пустым)
-        result.append(TableInBlock(header_row=header_row, data_rows=data_rows, max_col=max(cols_used, 1)))
+        result.append(
+            TableInBlock(
+                header_row=header_row,
+                data_rows=data_rows_list,
+                min_col=min_col,
+                max_col=cols_used,
+            )
+        )
         r += 1
     return result

@@ -1,8 +1,10 @@
 """Task 5: PK in 1NF — strict equality + validation (superkey, minimality, uniqueness)."""
-from app.core.checks.common import extract_attrs_via_dictionary, canon_attr_for_compare
+from app.core.checks.common import extract_attrs_via_dictionary_simple
 from app.core.algos.keys import is_superkey
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+from app.core.semantic.query import get_pk
+from app.core.semantic.triples import TripleStore
 
 
 def extract_pk_ref(parsed: ParsedSolution, dict_ref: dict[str, str]) -> list[str]:
@@ -14,7 +16,7 @@ def extract_pk_ref(parsed: ParsedSolution, dict_ref: dict[str, str]) -> list[str
         for row in tbl.rows:
             text += " " + " ".join(str(c) for c in row)
         text += " " + " ".join(tbl.headers)
-    return extract_attrs_via_dictionary(text, dict_ref)
+    return extract_attrs_via_dictionary_simple(text, dict_ref)
 
 
 def extract_pk_student(parsed: ParsedSolution, dict_ref: dict[str, str]) -> list[str]:
@@ -22,13 +24,13 @@ def extract_pk_student(parsed: ParsedSolution, dict_ref: dict[str, str]) -> list
 
 
 def check(
-    ref: ParsedSolution,
-    stu: ParsedSolution,
+    ref_graph: TripleStore,
+    stu_graph: TripleStore,
     dict_ref: dict[str, str],
     F_ref: list[tuple[list[str], str]],
 ) -> TaskResult:
-    ref_pk = extract_pk_ref(ref, dict_ref)
-    stu_pk = extract_pk_student(stu, dict_ref)
+    ref_pk = get_pk(ref_graph, "ref", 5)
+    stu_pk = get_pk(stu_graph, "stu", 5)
     U = set(dict_ref.keys())
     ref_set = set(ref_pk)
     stu_set = set(stu_pk)

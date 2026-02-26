@@ -1,4 +1,5 @@
 """HTML report builder. Все подписи и форматирование — по-русски."""
+import html
 from typing import Any, List, Tuple
 
 # Русские подписи статусов
@@ -28,13 +29,7 @@ TASK_TITLES = {
 
 
 def _escape(s: str) -> str:
-    return (
-        str(s)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+    return html.escape(str(s))
 
 
 def _row_to_html(row: List[Any]) -> str:

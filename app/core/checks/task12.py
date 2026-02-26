@@ -1,18 +1,19 @@
 """Task 12: Anomalies 2NF — rubric + attachment to partial FD."""
 from typing import Optional
-from app.core.semantic.rubric import classify_anomaly_types, mentions_partial_fd
-from app.core.excel.importer import ParsedSolution
+
 from app.core.result import TaskResult
+from app.core.semantic.query import get_text
+from app.core.semantic.rubric import classify_anomaly_types, mentions_partial_fd
+from app.core.semantic.triples import TripleStore
 
 
 def check(
-    ref: ParsedSolution,
-    stu: ParsedSolution,
+    ref_graph: TripleStore,
+    stu_graph: TripleStore,
     dict_ref: dict[str, str],
     P_ref: Optional[list[tuple[list[str], str]]],
 ) -> TaskResult:
-    t = stu.tasks.get(12)
-    text = " ".join(t.text_lines) if t and t.text_lines else ""
+    text = get_text(stu_graph, "stu", 12)
     if not text.strip():
         return TaskResult(status="FAIL", details={"reason": "empty"})
     types = classify_anomaly_types(text)

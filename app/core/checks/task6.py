@@ -1,10 +1,13 @@
 """Task 6: Partial FDs — X ⊂ PK, A non-prime, coverage 100%."""
 from typing import Optional
+
 from app.core.algos.fd import closure
 from app.core.algos.keys import candidate_keys
-from app.core.checks.common import canon_attr_for_compare, parse_fd_string, normalize_fd_arrow
+from app.core.checks.common import parse_fd_string, normalize_fd_arrow
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+from app.core.semantic.query import get_fds
+from app.core.semantic.triples import TripleStore
 
 
 def _collect_fd_strings(parsed: ParsedSolution, task_num: int) -> list[str]:
@@ -38,21 +41,17 @@ def compute_partial_ref(
 
 
 def extract_partial_student(parsed: ParsedSolution, dict_ref: dict[str, str]) -> list[tuple[list[str], str]]:
-    from app.core.checks.task4 import parse_fd_string
     out = []
     for s in _collect_fd_strings(parsed, 6):
-        for lhs, rhs_list in parse_fd_string(s):
-            lhs_c = [dict_ref.get(canon_attr_for_compare(x)) for x in lhs]
+        for lhs, rhs_list in parse_fd_string(s, dictionary=dict_ref):
             for r in rhs_list:
-                r_c = dict_ref.get(canon_attr_for_compare(r))
-                if None not in lhs_c and r_c:
-                    out.append((lhs_c, r_c))
+                out.append((lhs, r))
     return out
 
 
 def check(
-    ref: ParsedSolution,
-    stu: ParsedSolution,
+    ref_graph: TripleStore,
+    stu_graph: TripleStore,
     dict_ref: dict[str, str],
     F_ref: list[tuple[list[str], str]],
     PK_ref: Optional[list[str]],
@@ -60,8 +59,8 @@ def check(
     if not PK_ref:
         return TaskResult(status="INSF", details={"error": "No PK"})
     U = set(dict_ref.keys())
-    P_ref = compute_partial_ref(U, F_ref, PK_ref)
-    P_stu = extract_partial_student(stu, dict_ref)
+    P_ref = get_fds(ref_graph, "ref", 6) or compute_partial_ref(U, F_ref, PK_ref)
+    P_stu = get_fds(stu_graph, "stu", 6)
     missing = []
     for lhs, rhs in P_ref:
         if rhs not in closure(lhs, P_stu):

@@ -50,13 +50,13 @@ def _normalize_cell_display(val: Any) -> str:
 
 def _extract_table(ws, table: TableInBlock) -> ExtractedTable:
     headers = []
-    for c in range(1, table.max_col + 1):
+    for c in range(table.min_col, table.max_col + 1):
         v = _cell_value(ws, table.header_row, c)
         headers.append(str(v).strip() if v is not None else "")
     rows = []
     for r in table.data_rows:
         row = []
-        for c in range(1, table.max_col + 1):
+        for c in range(table.min_col, table.max_col + 1):
             v = _cell_value(ws, r, c)
             row.append(_normalize_cell_display(v))
         rows.append(row)

@@ -2,6 +2,8 @@
 from app.core.checks.common import canon_attr_for_compare, normalize_cell_value, is_separator_row
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+from app.core.semantic.query import get_pk_hint, get_table_1nf
+from app.core.semantic.triples import TripleStore
 
 
 def _get_table_1nf(parsed: ParsedSolution):
@@ -20,17 +22,15 @@ def _get_table_1nf(parsed: ParsedSolution):
     return (headers, rows)
 
 
-def check(ref: ParsedSolution, stu: ParsedSolution, dict_ref: dict[str, str]) -> TaskResult:
-    ref_t = _get_table_1nf(ref)
-    stu_t = _get_table_1nf(stu)
+def check(ref_graph: TripleStore, stu_graph: TripleStore, dict_ref: dict[str, str]) -> TaskResult:
+    ref_t = get_table_1nf(ref_graph, "ref")
+    stu_t = get_table_1nf(stu_graph, "stu")
     if not ref_t:
         return TaskResult(status="INSF", details={"error": "No ref 1NF table"})
-    ref_h, ref_rows = ref_t
-    ref_h_canon = [canon_attr_for_compare(h) for h in ref_h]
+    ref_h_canon, ref_rows = ref_t
     if not stu_t:
         return TaskResult(status="FAIL", expected=ref_h_canon, actual=[], details={"error": "No student 1NF table"})
-    stu_h, stu_rows = stu_t
-    stu_h_canon = [canon_attr_for_compare(h.rstrip("*.")) for h in stu_h]
+    stu_h_canon, stu_rows = stu_t
     if ref_h_canon != stu_h_canon:
         return TaskResult(
             status="FAIL",
@@ -65,8 +65,8 @@ def check(ref: ParsedSolution, stu: ParsedSolution, dict_ref: dict[str, str]) ->
             extra=extra_rows[:20],
             details={"missing_count": len(missing_rows), "extra_count": len(extra_rows)},
         )
-    # PK hint from * in headers
-    pk_hint = [canon_attr_for_compare(h) for h in stu_h if h and "*" in str(h)]
+    # PK hint from * in headers (from graph)
+    pk_hint = get_pk_hint(stu_graph, "stu")
     if pk_hint:
         key_cols = [ref_h_canon.index(a) for a in pk_hint if a in ref_h_canon]
         for row in stu_rows:

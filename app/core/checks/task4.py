@@ -1,12 +1,13 @@
-"""Task 4: FDs — extract, validate by dictionary, compare by closure, score ++/+-/-+/--."""
-from app.core.checks.common import (
-    canon_attr_for_compare,
-    parse_fd_string,
-    normalize_fd_arrow,
-)
+"""Task 4: FDs — извлечение по словарю, сравнение по выводимости, оценка ++/+-/-+/--."""
+from typing import TYPE_CHECKING
+
+from app.core.checks.common import normalize_fd_arrow, parse_fd_string
 from app.core.algos.fd import closure, minimal_cover
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+
+if TYPE_CHECKING:
+    from app.core.semantic.triples import TripleStore
 
 
 def _collect_fd_strings(parsed: ParsedSolution, task_num: int) -> list[str]:
@@ -28,47 +29,33 @@ def _collect_fd_strings(parsed: ParsedSolution, task_num: int) -> list[str]:
     return out
 
 
-def _to_single_rhs(fd_list: list[tuple[list[str], list[str]]]) -> list[tuple[list[str], str]]:
-    result = []
-    for lhs, rhs_list in fd_list:
-        for r in rhs_list:
-            result.append(([canon_attr_for_compare(x) for x in lhs], canon_attr_for_compare(r)))
-    return result
-
-
 def extract_fds_ref(parsed: ParsedSolution, dict_ref: dict[str, str]) -> list[tuple[list[str], str]]:
+    """Извлечение ФЗ эталона; только атрибуты из словаря #1."""
     raw = []
     for s in _collect_fd_strings(parsed, 4):
-        raw.extend(parse_fd_string(s))
+        raw.extend(parse_fd_string(s, dictionary=dict_ref))
     single = []
     for lhs, rhs_list in raw:
-        lhs_c = [dict_ref.get(canon_attr_for_compare(x)) for x in lhs]
-        rhs_c = [dict_ref.get(canon_attr_for_compare(x)) for x in rhs_list]
-        if None in lhs_c or None in rhs_c:
-            continue
-        for r in rhs_c:
-            single.append((lhs_c, r))
+        for r in rhs_list:
+            single.append((lhs, r))
     return minimal_cover(single)
 
 
 def extract_fds_student(parsed: ParsedSolution, dict_ref: dict[str, str]) -> list[tuple[list[str], str]]:
+    """Извлечение ФЗ студента; только атрибуты из словаря #1."""
     raw = []
     for s in _collect_fd_strings(parsed, 4):
-        raw.extend(parse_fd_string(s))
+        raw.extend(parse_fd_string(s, dictionary=dict_ref))
     single = []
     for lhs, rhs_list in raw:
-        lhs_c = [dict_ref.get(canon_attr_for_compare(x)) for x in lhs]
-        rhs_c = [dict_ref.get(canon_attr_for_compare(x)) for x in rhs_list]
-        if None in lhs_c or None in rhs_c:
-            continue
-        for r in rhs_c:
-            single.append((lhs_c, r))
+        for r in rhs_list:
+            single.append((lhs, r))
     return minimal_cover(single)
 
 
 def check(
-    ref: ParsedSolution,
-    stu: ParsedSolution,
+    ref_graph: "TripleStore",
+    stu_graph: "TripleStore",
     dict_ref: dict[str, str],
     F_ref: list[tuple[list[str], str]],
     F_stu: list[tuple[list[str], str]],

@@ -1,9 +1,46 @@
 """Simple queries over the graph."""
+from __future__ import annotations
+
+from typing import Optional
+
 from app.core.semantic.triples import TripleStore, Triple
 
 
 def get_task_subject(role: str, task_num: int) -> str:
     return f"sol:{role}:task:{task_num}"
+
+
+def get_repeating_group(store: TripleStore, role: str) -> set[str]:
+    """Get repeating group attributes (task 2)."""
+    subj = get_task_subject(role, 2)
+    triples = store.find(s=subj, p="repeating_group_contains")
+    return {t.o for t in triples if isinstance(t.o, str)}
+
+
+def get_table_1nf(store: TripleStore, role: str) -> Optional[tuple[list[str], list[list]]]:
+    """Get (canon_headers, rows) for task 3; None if not present."""
+    subj = get_task_subject(role, 3)
+    h = store.find_one(s=subj, p="table_1nf_headers")
+    r = store.find_one(s=subj, p="table_1nf_rows")
+    if h is not None and isinstance(h.o, list) and r is not None and isinstance(r.o, list):
+        return (list(h.o), list(r.o))
+    return None
+
+
+def get_pk_hint(store: TripleStore, role: str) -> list[str]:
+    """Get PK hint from task 3 (headers with *)."""
+    subj = get_task_subject(role, 3)
+    t = store.find_one(s=subj, p="pk_hint_contains")
+    if t and isinstance(t.o, list):
+        return list(t.o)
+    return []
+
+
+def get_text(store: TripleStore, role: str, task_num: int) -> str:
+    """Get text content for task 10 or 12."""
+    subj = get_task_subject(role, task_num)
+    t = store.find_one(s=subj, p="text_content")
+    return t.o if t and isinstance(t.o, str) else ""
 
 
 def get_attributes(store: TripleStore, role: str, task_num: int = 1) -> list[str]:

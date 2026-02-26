@@ -33,3 +33,11 @@ def test_score_low():
     ratio, label = score_fd_coverage(F_ref, F_stu)
     assert ratio == 0.0
     assert label == "--"
+
+
+def test_score_empty_fref_no_false_plus():
+    F_ref = []
+    F_stu = [(["A"], "B")]
+    ratio, label = score_fd_coverage(F_ref, F_stu)
+    assert ratio == 0.0
+    assert label == "—"

@@ -1,9 +1,12 @@
 """Task 9: Nested transitive chains."""
 from typing import Optional
+
 from app.core.checks.task8 import compute_transitive_ref
-from app.core.checks.common import canon_attr_for_compare, parse_fd_string, normalize_fd_arrow
+from app.core.checks.common import parse_fd_string, normalize_fd_arrow
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+from app.core.semantic.query import get_fds
+from app.core.semantic.triples import TripleStore
 
 
 def build_chains_transitive(T_ref: list[tuple[list[str], str]]) -> list[list[tuple[list[str], str]]]:
@@ -32,18 +35,15 @@ def _collect_fd_strings(parsed: ParsedSolution, task_num: int) -> list[str]:
 def extract_chains_student(parsed: ParsedSolution, dict_ref: dict[str, str]) -> list[list[tuple[list[str], str]]]:
     out = []
     for s in _collect_fd_strings(parsed, 9):
-        for lhs, rhs_list in parse_fd_string(s):
-            lhs_c = [dict_ref.get(canon_attr_for_compare(x)) for x in lhs]
+        for lhs, rhs_list in parse_fd_string(s, dictionary=dict_ref):
             for r in rhs_list:
-                r_c = dict_ref.get(canon_attr_for_compare(r))
-                if None not in lhs_c and r_c:
-                    out.append((lhs_c, r_c))
+                out.append((lhs, r))
     return build_chains_transitive(out)
 
 
 def check(
-    ref: ParsedSolution,
-    stu: ParsedSolution,
+    ref_graph: TripleStore,
+    stu_graph: TripleStore,
     dict_ref: dict[str, str],
     F_ref: list[tuple[list[str], str]],
     T_ref: Optional[list[tuple[list[str], str]]],
@@ -52,9 +52,10 @@ def check(
         return TaskResult(status="PASS", expected=[], actual=[])
     U = set(dict_ref.keys())
     if T_ref is None:
-        T_ref = compute_transitive_ref(U, F_ref)
+        T_ref = get_fds(ref_graph, "ref", 8) or compute_transitive_ref(U, F_ref)
     expected_chains = build_chains_transitive(T_ref)
-    actual_chains = extract_chains_student(stu, dict_ref)
+    T_stu = get_fds(stu_graph, "stu", 8) or []
+    actual_chains = build_chains_transitive(T_stu)
     ref_fd_set = set((tuple(sorted(l)), r) for l, r in T_ref)
     stu_fd_set = set()
     for chain in actual_chains:

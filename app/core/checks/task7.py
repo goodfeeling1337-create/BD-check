@@ -1,9 +1,9 @@
 """Task 7: Nested partial (chains) — by LHS inclusion."""
-from typing import TYPE_CHECKING, Optional
-from app.core.result import TaskResult
+from typing import Optional
 
-if TYPE_CHECKING:
-    from app.core.excel.importer import ParsedSolution
+from app.core.result import TaskResult
+from app.core.semantic.query import get_fds
+from app.core.semantic.triples import TripleStore
 
 
 def build_chains_partial(P_ref: list[tuple[list[str], str]]) -> list[list[tuple[list[str], str]]]:
@@ -18,27 +18,23 @@ def build_chains_partial(P_ref: list[tuple[list[str], str]]) -> list[list[tuple[
     return chains
 
 
-def extract_chains_student(parsed: "ParsedSolution", dict_ref: dict) -> list[list[tuple[list[str], str]]]:
+def extract_chains_student(parsed, dict_ref: dict) -> list[list[tuple[list[str], str]]]:
     from app.core.checks.task6 import _collect_fd_strings
-    from app.core.checks.common import canon_attr_for_compare
-    from app.core.checks.task4 import parse_fd_string
+    from app.core.checks.common import parse_fd_string
     t = parsed.tasks.get(7)
     if not t:
         return []
     P_stu = []
     for s in _collect_fd_strings(parsed, 7):
-        for lhs, rhs_list in parse_fd_string(s):
-            lhs_c = [dict_ref.get(canon_attr_for_compare(x)) for x in lhs]
+        for lhs, rhs_list in parse_fd_string(s, dictionary=dict_ref):
             for r in rhs_list:
-                r_c = dict_ref.get(canon_attr_for_compare(r))
-                if None not in lhs_c and r_c:
-                    P_stu.append((lhs_c, r_c))
+                P_stu.append((lhs, r))
     return build_chains_partial(P_stu)
 
 
 def check(
-    ref: "ParsedSolution",
-    stu: "ParsedSolution",
+    ref_graph: TripleStore,
+    stu_graph: TripleStore,
     dict_ref: dict[str, str],
     P_ref: Optional[list[tuple[list[str], str]]],
     strict_nested_order: bool = False,
@@ -46,7 +42,8 @@ def check(
     if not P_ref:
         return TaskResult(status="PASS", expected=[], actual=[])
     expected_chains = build_chains_partial(P_ref)
-    actual_chains = extract_chains_student(stu, dict_ref)
+    P_stu = get_fds(stu_graph, "stu", 6) or []
+    actual_chains = build_chains_partial(P_stu)
     ref_fd_set = set((tuple(sorted(l)), r) for l, r in P_ref)
     stu_fd_set = set()
     for chain in actual_chains:

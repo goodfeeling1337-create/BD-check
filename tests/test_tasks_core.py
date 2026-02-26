@@ -6,7 +6,8 @@ from app.core.checks.common import (
     normalize_fd_arrow,
     is_separator_row,
     build_attribute_dictionary,
-    extract_attrs_via_dictionary,
+    extract_attrs_via_dictionary_simple,
+    SEPARATOR_ROW_RE,
 )
 
 
@@ -19,11 +20,19 @@ def test_canon_attr():
 def test_parse_fd_string():
     out = parse_fd_string("A, B -> C")
     assert len(out) == 1
-    assert out[0][0] == ["A", "B"]
-    assert out[0][1] == ["C"]
+    assert out[0][0] == ["a", "b"]
+    assert out[0][1] == ["c"]
     out2 = parse_fd_string("A -> B, C")
     assert len(out2) == 1
-    assert out2[0][1] == ["B", "C"]
+    assert out2[0][1] == ["b", "c"]
+
+
+def test_parse_fd_string_multiword():
+    d = build_attribute_dictionary(["код товара", "адрес поставщика", "наименование"])
+    out = parse_fd_string("Код товара, Адрес поставщика -> Наименование", dictionary=d)
+    assert len(out) == 1
+    assert set(out[0][0]) == {"код товара", "адрес поставщика"}
+    assert out[0][1] == ["наименование"]
 
 
 def test_normalize_fd_arrow():
@@ -37,15 +46,28 @@ def test_is_separator_row():
     assert is_separator_row(["a", "b"]) is False
 
 
+def test_separator_regex():
+    assert SEPARATOR_ROW_RE.match(".....")
+    assert SEPARATOR_ROW_RE.match("…")
+    assert not SEPARATOR_ROW_RE.match("a")
+
+
 def test_build_attribute_dictionary():
     d = build_attribute_dictionary(["a", "b", "c"])
     assert d["a"] == "a"
     assert canon_attr_for_compare("A") in d
 
 
-def test_extract_attrs_via_dictionary():
+def test_extract_attrs_via_dictionary_simple():
     d = build_attribute_dictionary(["id", "name", "code"])
-    found = extract_attrs_via_dictionary("id, name, code", d)
+    found = extract_attrs_via_dictionary_simple("id, name, code", d)
     assert set(found) <= set(d.keys())
-    found2 = extract_attrs_via_dictionary("id name code", d)
+    found2 = extract_attrs_via_dictionary_simple("id name code", d)
     assert len(found2) >= 1
+
+
+def test_extract_multiword_attrs():
+    d = build_attribute_dictionary(["код товара", "адрес поставщика"])
+    found = extract_attrs_via_dictionary_simple("код товара и адрес поставщика", d)
+    assert set(found) <= {"код товара", "адрес поставщика"}
+    assert len(found) >= 1

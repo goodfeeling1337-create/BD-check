@@ -2,6 +2,8 @@
 from app.core.checks.common import canon_attr_for_compare
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+from app.core.semantic.query import get_attributes
+from app.core.semantic.triples import TripleStore
 
 
 def extract_headers_ref(parsed: ParsedSolution) -> list[str]:
@@ -18,15 +20,13 @@ def extract_headers_student(parsed: ParsedSolution) -> list[str]:
 
 
 def check(
-    ref: ParsedSolution,
-    stu: ParsedSolution,
+    ref_graph: TripleStore,
+    stu_graph: TripleStore,
     dict_ref: dict[str, str],
     strict_order: bool = False,
 ) -> TaskResult:
-    ref_headers = extract_headers_ref(ref)
-    stu_headers = extract_headers_student(stu)
-    ref_canon = [canon_attr_for_compare(h) for h in ref_headers]
-    stu_canon = [canon_attr_for_compare(h) for h in stu_headers]
+    ref_canon = get_attributes(ref_graph, "ref", 1)
+    stu_canon = get_attributes(stu_graph, "stu", 1)
     ref_set = set(ref_canon)
     stu_set = set(stu_canon)
     missing = ref_set - stu_set

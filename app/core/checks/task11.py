@@ -1,41 +1,69 @@
 """Task 11: 2NF schemas — coverage, 2NF per relation, accept alternative correct decompositions."""
 import re
 from typing import Optional
+
 from app.core.checks.common import canon_attr_for_compare
 from app.core.algos.keys import candidate_keys
 from app.core.algos.normal_forms import check_2nf
 from app.core.algos.decomposition import coverage_check, lossless_join_basic, dependency_preservation_approx
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+from app.core.semantic.query import get_relations
+from app.core.semantic.triples import TripleStore
 
 
 def _F_local(attrs: set[str], F: list[tuple[list[str], str]]) -> list[tuple[list[str], str]]:
     return [(lhs, rhs) for lhs, rhs in F if set(lhs) <= attrs and rhs in attrs]
 
 
+def _row_looks_like_data(row: list, dict_ref: dict[str, str]) -> bool:
+    """True if row cells look like values (numbers, dates), not attribute names."""
+    if not row or len(row) < 2:
+        return False
+    in_dict = sum(1 for c in row[1:] if dict_ref.get(canon_attr_for_compare(str(c).strip())))
+    return in_dict < max(1, len(row[1:]) // 2)
+
+
 def extract_relations(parsed: ParsedSolution, task_num: int, dict_ref: dict[str, str]) -> list[tuple[str, set[str]]]:
-    """Parse tables (one row = one relation) and text like Name(A,B,C) into (name, set(attrs))."""
+    """Parse tables: either (1) one row = one relation [Name, Attr1, Attr2...] or (2) header+data = one relation."""
     t = parsed.tasks.get(task_num)
     if not t:
         return []
     relations = []
     for tbl in t.tables:
+        # Таблица «шапка + данные»: заголовок — атрибуты, строки — значения (числа, даты)
+        if tbl.rows and tbl.headers and _row_looks_like_data(tbl.rows[0], dict_ref):
+            name = str(tbl.headers[0]).strip().rstrip("*.") or "R"
+            name_canon = canon_attr_for_compare(name)
+            if not name_canon or name_canon in dict_ref:
+                name = name_canon or "R"
+            attrs = set()
+            for h in tbl.headers[1:]:
+                c = dict_ref.get(canon_attr_for_compare(str(h).strip().rstrip("*.")))
+                if c:
+                    attrs.add(c)
+            if attrs:
+                relations.append((name if isinstance(name, str) and name else "R", attrs))
+            continue
+        # Каждая строка = одно отношение [Имя, Атрибут1, Атрибут2, ...]
         for row in tbl.rows:
             if not row:
                 continue
             name = str(row[0]).strip() if row else "R"
             attrs = set()
             for cell in row[1:]:
-                c = dict_ref.get(canon_attr_for_compare(str(cell).strip()))
-                if c:
-                    attrs.add(c)
+                val = str(cell).strip()
+                for part in re.split(r"[\s,;]+", val):
+                    c = dict_ref.get(canon_attr_for_compare(part.rstrip("*.")))
+                    if c:
+                        attrs.add(c)
             if name or attrs:
                 relations.append((name or "R", attrs))
         if not tbl.rows and tbl.headers:
             name = str(tbl.headers[0]).strip() or "R"
             attrs = set()
             for h in tbl.headers[1:]:
-                c = dict_ref.get(canon_attr_for_compare(str(h).strip()))
+                c = dict_ref.get(canon_attr_for_compare(str(h).strip().rstrip("*.")))
                 if c:
                     attrs.add(c)
             if name or attrs:
@@ -54,16 +82,32 @@ def extract_relations(parsed: ParsedSolution, task_num: int, dict_ref: dict[str,
     return relations
 
 
+def _relations_equal(
+    a: list[tuple[str, set[str]]], b: list[tuple[str, set[str]]]
+) -> bool:
+    """Совпадают ли наборы отношений (имена и множества атрибутов)."""
+    sa = set((name, frozenset(attrs)) for name, attrs in a)
+    sb = set((name, frozenset(attrs)) for name, attrs in b)
+    return sa == sb
+
+
 def check(
-    ref: ParsedSolution,
-    stu: ParsedSolution,
+    ref_graph: TripleStore,
+    stu_graph: TripleStore,
     dict_ref: dict[str, str],
     F_ref: list[tuple[list[str], str]],
     P_ref: Optional[list[tuple[list[str], str]]],
 ) -> TaskResult:
     U = set(dict_ref.keys())
-    relations = extract_relations(stu, 11, dict_ref)
-    ok_cov, missing, extra = coverage_check(U, relations)
+    ref_relations = get_relations(ref_graph, "ref", 11)
+    relations = get_relations(stu_graph, "stu", 11)
+    # Если таблицы эталона и ответа совпадают — покрытие засчитываем
+    if _relations_equal(ref_relations, relations):
+        ok_cov = True
+        missing = set()
+        extra = set()
+    else:
+        ok_cov, missing, extra = coverage_check(U, relations)
     if not ok_cov:
         return TaskResult(
             status="FAIL",
@@ -71,10 +115,19 @@ def check(
             missing=list(missing),
             extra=list(extra),
         )
+    empty_f_local: list[str] = []
     for name, attrs in relations:
         F_local = _F_local(attrs, F_ref)
+        if not F_local and len(attrs) > 1:
+            empty_f_local.append(name)
         keys = candidate_keys(attrs, F_local) if F_local else []
         nf_ok, violations = check_2nf(attrs, F_local, keys)
         if not nf_ok:
             return TaskResult(status="FAIL", details={"relation": name, "violations": violations})
+    if empty_f_local:
+        return TaskResult(
+            status="WARN",
+            actual=relations,
+            details={"coverage": True, "empty_f_local": empty_f_local, "reason": "нет проецируемых ФЗ для части отношений"},
+        )
     return TaskResult(status="PASS", actual=relations, details={"coverage": True})

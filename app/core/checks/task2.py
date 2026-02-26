@@ -1,11 +1,13 @@
 """Task 2: Repeating group as set of attributes — strict set match."""
-from app.core.checks.common import extract_attrs_via_dictionary
+from app.core.checks.common import extract_attrs_via_dictionary_simple
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+from app.core.semantic.query import get_repeating_group
+from app.core.semantic.triples import TripleStore
 
 
 def extract_repeating_group_ref(parsed: ParsedSolution, dict_ref: dict[str, str]) -> set[str]:
-    """Extract repeating group attributes from ref task 2 (text or cells)."""
+    """Извлечение атрибутов повторяющейся группы по словарю (без разбиения по пробелам)."""
     t = parsed.tasks.get(2)
     if not t:
         return set()
@@ -14,16 +16,16 @@ def extract_repeating_group_ref(parsed: ParsedSolution, dict_ref: dict[str, str]
         for row in tbl.rows:
             text += " " + " ".join(str(c) for c in row)
         text += " " + " ".join(tbl.headers)
-    return set(extract_attrs_via_dictionary(text, dict_ref))
+    return set(extract_attrs_via_dictionary_simple(text, dict_ref))
 
 
 def extract_repeating_group_student(parsed: ParsedSolution, dict_ref: dict[str, str]) -> set[str]:
     return extract_repeating_group_ref(parsed, dict_ref)
 
 
-def check(ref: ParsedSolution, stu: ParsedSolution, dict_ref: dict[str, str]) -> TaskResult:
-    ref_set = extract_repeating_group_ref(ref, dict_ref)
-    stu_set = extract_repeating_group_student(stu, dict_ref)
+def check(ref_graph: TripleStore, stu_graph: TripleStore, dict_ref: dict[str, str]) -> TaskResult:
+    ref_set = get_repeating_group(ref_graph, "ref")
+    stu_set = get_repeating_group(stu_graph, "stu")
     missing = ref_set - stu_set
     extra = stu_set - ref_set
     if missing or extra:

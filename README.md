@@ -51,7 +51,7 @@ pyinstaller --name "DB-Norm-Checker" --windowed --onefile \
   app/main.py
 ```
 
-Собранное приложение: `dist/DB-Norm-Checker.app`. Запуск из терминала с тем же окружением: `python -m app` (из корня с `PYTHONPATH=.` или после `pip install -e .`).
+Собранное приложение: `dist/DB-Norm-Checker.app`.
 
 ## Структура
 
@@ -71,5 +71,33 @@ pyinstaller --name "DB-Norm-Checker" --windowed --onefile \
 ## Тесты
 
 ```bash
+# из корня репозитория
+pip install -e ".[dev]"
 pytest
+# или с путём
+PYTHONPATH=. pytest tests/ -v
 ```
+
+Проверка компиляции: `python -m compileall -q app`
+
+## Форматирование и линтер
+
+```bash
+pip install black ruff isort pre-commit
+pre-commit install
+black app tests
+ruff check app tests
+isort app tests
+```
+
+## Сборка .app (macOS)
+
+```bash
+pip install pyinstaller
+pyinstaller --name "DB-Norm-Checker" --windowed --onefile --paths . app/main.py
+# при необходимости:
+pyinstaller --name "DB-Norm-Checker" --windowed --onefile \
+  --hidden-import=openpyxl --hidden-import=PySide6 --paths . app/main.py
+```
+
+Собранное приложение: `dist/DB-Norm-Checker.app`.

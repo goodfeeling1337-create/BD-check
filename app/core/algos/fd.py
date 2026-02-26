@@ -4,8 +4,8 @@ from typing import Iterable
 
 def closure(X: Iterable[str], F: list[tuple[list[str], str]]) -> set[str]:
     """
-    Compute closure X+ under F.
-    F: list of (lhs_list, rhs) where rhs is single attribute.
+    Вычисление замыкания X+ по F.
+    F: список (lhs_list, rhs), rhs — один атрибут.
     """
     Xset = set(X)
     result = set(Xset)

@@ -12,7 +12,7 @@ def score_fd_coverage(
     Returns (score_ratio, label).
     """
     if not F_ref:
-        return (1.0, "++")
+        return (0.0, "—")
     covered = 0
     for lhs, rhs in F_ref:
         if rhs in closure(lhs, F_stu):
