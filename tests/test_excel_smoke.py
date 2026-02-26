@@ -46,3 +46,11 @@ def test_parse_workbook_smoke():
         assert t1.tables or t1.text_lines
     finally:
         Path(path).unlink(missing_ok=True)
+
+
+def test_parse_workbook_with_separator_row():
+    """Parser and task 3 logic: separator row (dots only) is skipped."""
+    from app.core.checks.common import is_separator_row
+
+    assert is_separator_row([".....", "…", ""], max_col=3) is True
+    assert is_separator_row(["1", "2"], max_col=2) is False

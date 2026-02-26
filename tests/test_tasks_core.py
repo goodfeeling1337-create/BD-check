@@ -38,6 +38,19 @@ def test_parse_fd_string_multiword():
 def test_normalize_fd_arrow():
     assert "->" in normalize_fd_arrow("A → B")
     assert "->" in normalize_fd_arrow("A -> B")
+    assert "->" in normalize_fd_arrow("A -- B")
+    assert "->" in normalize_fd_arrow("A => B")
+
+
+def test_parse_fd_semicolon_and_newline():
+    """FD split by ; and newline; LHS/RHS by comma/semicolon only."""
+    out = parse_fd_string("A,B -> C; D,E -> F")
+    assert len(out) == 2
+    assert out[0][0] == ["a", "b"] and out[0][1] == ["c"]
+    assert out[1][0] == ["d", "e"] and out[1][1] == ["f"]
+    out2 = parse_fd_string("A -> B\nC -> D")
+    assert len(out2) == 2
+    assert out2[0][1] == ["b"] and out2[1][0] == ["c"] and out2[1][1] == ["d"]
 
 
 def test_is_separator_row():

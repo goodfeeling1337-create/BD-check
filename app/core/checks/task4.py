@@ -5,6 +5,7 @@ from app.core.checks.common import normalize_fd_arrow, parse_fd_string
 from app.core.algos.fd import closure, minimal_cover
 from app.core.excel.importer import ParsedSolution
 from app.core.result import TaskResult
+from app.core.semantic.explain import explain_missing_fd
 
 if TYPE_CHECKING:
     from app.core.semantic.triples import TripleStore
@@ -70,6 +71,11 @@ def check(
         if rhs not in closure(lhs, F_ref):
             extra_fds.append((lhs, rhs))
     status = "PASS" if not missing_fds else "FAIL"
+    explanation = ""
+    if missing_fds:
+        lhs, rhs = missing_fds[0]
+        cl = closure(lhs, F_stu)
+        explanation = explain_missing_fd(lhs, rhs, cl)
     return TaskResult(
         status=status,
         expected=F_ref,
@@ -77,4 +83,5 @@ def check(
         missing=missing_fds,
         extra=extra_fds,
         details={"score": score_label, "missing_count": len(missing_fds)},
+        explanation=explanation,
     )

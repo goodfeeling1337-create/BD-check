@@ -177,15 +177,36 @@ def _details_ru(details: dict, task_num: int) -> str:
         return ""
     parts = []
     for k, v in details.items():
-        k_ru = {"score": "оценка", "missing_count": "количество отсутствующих", "extra_count": "количество лишних",
-                "reason": "причина", "order_warn": "порядок элементов", "coverage": "покрытие атрибутов",
-                "relation": "отношение", "violations": "нарушения", "lossless": "беспотерьность",
-                "dep_pres": "сохранение зависимостей"}.get(k, k)
+        k_ru = {
+            "score": "оценка",
+            "missing_count": "количество отсутствующих",
+            "extra_count": "количество лишних",
+            "reason": "причина",
+            "order_warn": "порядок элементов",
+            "coverage": "покрытие атрибутов",
+            "relation": "отношение",
+            "violations": "нарушения",
+            "lossless": "беспотерьность",
+            "dep_pres": "сохранение зависимостей",
+            "error": "ошибка",
+            "lossless_warn": "предупреждение о беспотерьности",
+            "dep_pres_warn": "предупреждение о сохранении зависимостей",
+        }.get(k, k)
         if k == "reason":
-            v_ru = {"header_mismatch": "не совпадают заголовки таблицы", "order_mismatch": "не совпадает порядок атрибутов",
-                    "empty": "пустой ответ", "off_topic": "ответ не по теме", "not_superkey": "набор не является суперключом",
-                    "not_minimal": "ключ не минимален"}.get(str(v), str(v))
+            v_ru = {
+                "header_mismatch": "не совпадают заголовки таблицы",
+                "order_mismatch": "не совпадает порядок атрибутов",
+                "empty": "пустой ответ",
+                "off_topic": "ответ не по теме",
+                "not_superkey": "набор не является суперключом",
+                "not_minimal": "ключ не минимален",
+                "pk_hint_empty_cell": "в ключевом столбце пустая ячейка",
+                "pk_hint_duplicate": "дубликат по ключу",
+            }.get(str(v), str(v))
+        elif k == "error":
+            v_ru = str(v)
         else:
             v_ru = str(v)
-        parts.append(f"{k_ru}: {v_ru}")
+        if v_ru:
+            parts.append(f"{k_ru}: {v_ru}")
     return ". ".join(parts)

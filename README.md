@@ -80,6 +80,8 @@ PYTHONPATH=. pytest tests/ -v
 
 Проверка компиляции: `python -m compileall -q app`
 
+Список ключевых правок по версиям — в [CHANGELOG.md](CHANGELOG.md).
+
 ## Форматирование и линтер
 
 ```bash

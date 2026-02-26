@@ -35,3 +35,16 @@ def test_candidate_keys_composite():
     keys = candidate_keys(R, F)
     assert len(keys) == 1
     assert set(keys[0]) == {"A", "B"}
+
+
+def test_candidate_keys_uses_max_optional():
+    """candidate_keys with many optional attrs is bounded (no explosion)."""
+    from app.core.settings import KEYS_MAX_OPTIONAL
+
+    # R has 30 attrs, all in RHS of one FD -> one mandatory, 29 optional
+    R = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcd")  # 30
+    F = [(["A"], b) for b in R if b != "A"]
+    keys = candidate_keys(R, F)
+    assert len(keys) == 1
+    assert keys[0] == frozenset({"A"})
+    assert KEYS_MAX_OPTIONAL >= 1

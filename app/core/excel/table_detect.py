@@ -3,6 +3,8 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
+from app.core.checks.common import SEPARATOR_ROW_RE
+
 if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet
 
@@ -21,13 +23,14 @@ class TableInBlock:
 
 
 def _row_is_separator(ws: "Worksheet", row: int, min_col: int, max_col: int) -> bool:
-    """True if row looks like separator (only dots/dashes/empty)."""
+    """True if row looks like separator (only dots/dashes/ellipsis/empty). Uses SEPARATOR_ROW_RE."""
     for c in range(min_col, max_col + 1):
         val = ws.cell(row=row, column=c).value
         s = (str(val).strip() if val is not None else "")
-        if not s or all(ch in ".- \t" for ch in s) or s.replace(".", "").replace("…", "") == "":
+        if not s:
             continue
-        return False
+        if not SEPARATOR_ROW_RE.match(s):
+            return False
     return True
 
 

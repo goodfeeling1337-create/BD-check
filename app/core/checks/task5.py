@@ -43,9 +43,21 @@ def check(
             extra=sorted(stu_set - ref_set),
         )
     if not is_superkey(stu_pk, U, F_ref):
-        return TaskResult(status="FAIL", expected=ref_pk, actual=stu_pk, details={"reason": "not_superkey"})
+        return TaskResult(
+            status="FAIL",
+            expected=ref_pk,
+            actual=stu_pk,
+            details={"reason": "not_superkey"},
+            explanation="Указанный набор атрибутов не является суперключом (не определяет все атрибуты отношения).",
+        )
     # Minimality: removing any attribute from PK should not be superkey
     for a in stu_pk:
         if is_superkey([x for x in stu_pk if x != a], U, F_ref):
-            return TaskResult(status="FAIL", expected=ref_pk, actual=stu_pk, details={"reason": "not_minimal"})
+            return TaskResult(
+                status="FAIL",
+                expected=ref_pk,
+                actual=stu_pk,
+                details={"reason": "not_minimal"},
+                explanation="Первичный ключ не минимален: один из атрибутов можно удалить, и набор останется суперключом.",
+            )
     return TaskResult(status="PASS", expected=ref_pk, actual=stu_pk)
